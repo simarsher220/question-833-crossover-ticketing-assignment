@@ -54,7 +54,7 @@ public class AdminReservationApiController {
     private final FileUploadManager fileUploadManager;
 
     @RequestMapping(value = "/event/{eventName}/new", method = RequestMethod.POST)
-    public Result<String> createNew(@PathVariable("eventName") String eventName, @RequestBody AdminReservationModification reservation, Principal principal) {
+    public Result<String> createNew(@PathVariable("eventName") String eventName, @RequestBody AdminReservationModification reservation, Principal principal) throws Exception {
         return adminReservationManager.createReservation(reservation, eventName, principal.getName()).map(r -> r.getLeft().getId());
     }
 

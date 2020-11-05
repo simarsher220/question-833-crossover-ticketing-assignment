@@ -16,8 +16,12 @@
  */
 package alfio.controller;
 
+import alfio.exception.CustomException;
+import alfio.model.result.ErrorCode;
+import alfio.model.result.Result;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -50,4 +54,10 @@ public class ControllerExceptionHandler {
         return "bad request";
     }
 
+    @ExceptionHandler(CustomException.class)
+    @ResponseBody
+    public ResponseEntity handleException(CustomException e) {
+        ErrorCode errorCode = e.getCode();
+        return new ResponseEntity<>(Result.error(errorCode), e.getStatus());
+    }
 }

@@ -432,6 +432,15 @@ public class EventManager {
                     .checkPrecondition(() -> tcm.isBounded() == existing.isBounded() || ticketRepository.countPendingOrReleasedForCategory(eventId, existing.getId()) == 0, ErrorCode.custom("", "It is not safe to change allocation strategy right now because there are pending reservations."))
                     .checkPrecondition(() -> !existing.isAccessRestricted() || tcm.isBounded() == existing.isAccessRestricted(), ErrorCode.custom("", "Dynamic allocation is not compatible with restricted access"))
                     .checkPrecondition(() -> {
+                        // see https://github.com/exteso/alf.io/issues/335
+                        // handle the case when the user try to shrink a category with tokens that are already sent
+                        // we should fail if there are not enough free token left
+                        int addedTicket = tcm.getMaxTickets() - existing.getMaxTickets();
+                        return addedTicket >= 0 ||
+                            !existing.isAccessRestricted()
+                            || specialPriceRepository.countNotSentToken(categoryId) >= Math.abs(addedTicket);
+                    }, ErrorCode.CategoryError.NOT_ENOUGH_FREE_TOKEN_FOR_SHRINK)
+                    .checkPrecondition(() -> {
                         if(tcm.isBounded() && !existing.isBounded()) {
                             int newSize = tcm.getMaxTickets();
                             int confirmed = ticketRepository.countConfirmedForCategory(eventId, existing.getId());
@@ -696,6 +705,7 @@ public class EventManager {
             } else {
                 int absDifference = Math.abs(addedTickets);
                 final List<Integer> ids = specialPriceRepository.lockNotSentTokens(updated.getId(), absDifference);
+                Validate.isTrue(ids.size() - absDifference == 0, "not enough tokens");
                 specialPriceRepository.cancelTokens(ids);
             }
         }

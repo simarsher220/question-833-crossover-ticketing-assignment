@@ -17,10 +17,12 @@
 package alfio.manager;
 
 import alfio.controller.support.TemplateProcessor;
+import alfio.exception.CustomException;
 import alfio.manager.payment.PaymentSpecification;
 import alfio.manager.support.DuplicateReferenceException;
 import alfio.manager.system.ReservationPriceCalculator;
 import alfio.model.*;
+import alfio.repository.user.UserRepository;
 import alfio.model.TicketReservation.TicketReservationStatus;
 import alfio.model.decorator.TicketPriceContainer;
 import alfio.model.modification.AdminReservationModification;
@@ -37,7 +39,6 @@ import alfio.model.transaction.PaymentProxy;
 import alfio.model.user.Organization;
 import alfio.model.user.User;
 import alfio.repository.*;
-import alfio.repository.user.UserRepository;
 import alfio.util.Json;
 import alfio.util.MonetaryUtil;
 import alfio.util.TemplateManager;
@@ -51,6 +52,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.springframework.context.MessageSource;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -60,6 +62,10 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.Assert;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -106,6 +112,7 @@ public class AdminReservationManager {
     private final ExtensionManager extensionManager;
     private final BillingDocumentRepository billingDocumentRepository;
     private final FileUploadManager fileUploadManager;
+    private final AdminBlacklistManager blacklistManager;
 
     //the following methods have an explicit transaction handling, therefore the @Transactional annotation is not helpful here
     public Result<Triple<TicketReservation, List<Ticket>, Event>> confirmReservation(String eventName, String reservationId, String username, Notification notification) {
@@ -161,7 +168,28 @@ public class AdminReservationManager {
         });
     }
 
-    public Result<Pair<TicketReservation, List<Ticket>>> createReservation(AdminReservationModification input, String eventName, String username) {
+    public Result<Pair<TicketReservation, List<Ticket>>> createReservation(AdminReservationModification input, String eventName, String username) throws CustomException, IOException {
+        List<Blacklist> blacklists = blacklistManager.getBlacklists();
+        List<String> blacklistedEmails = blacklists.stream().map(Blacklist::getEmail).collect(Collectors.toList());
+        if (blacklistedEmails.contains(input.getCustomerData().getEmailAddress())) {
+            ErrorCode errorCode = ErrorCode.custom("blacklisted", "This email is blacklisted!");
+            throw new CustomException(errorCode, HttpStatus.BAD_REQUEST);
+        }
+
+        File file = new File("blacklisted-domains.txt");
+        List<String> blackListedDomains = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                blackListedDomains.add(line.trim());
+            }
+        }
+
+        if (blackListedDomains.contains(input.getCustomerData().getEmailAddress().split("@")[1])) {
+            ErrorCode errorCode = ErrorCode.custom("blacklisted", "This domain is blacklisted!");
+            throw new CustomException(errorCode, HttpStatus.BAD_REQUEST);
+        }
+
         DefaultTransactionDefinition definition = new DefaultTransactionDefinition(TransactionDefinition.PROPAGATION_NESTED);
         TransactionTemplate template = new TransactionTemplate(transactionManager, definition);
         return template.execute(status -> {
