@@ -10,7 +10,6 @@ RUN wget https://codejudge-starter-repo-artifacts.s3.ap-south-1.amazonaws.com/ba
 RUN chmod 775 ./pre-build-2.sh
 RUN sh pre-build-2.sh
 
-COPY postgres-setup.sh .
 RUN wget https://codejudge-starter-repo-artifacts.s3.ap-south-1.amazonaws.com/backend-project/database/postgres-setup.sh
 RUN chmod 775 ./postgres-setup.sh
 RUN sh postgres-setup.sh
