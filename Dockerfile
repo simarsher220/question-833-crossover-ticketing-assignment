@@ -1,9 +1,13 @@
 FROM maven:3.6.3-jdk-11-openj9
 
+ARG AWS_ACCESS_KEY="none"
+ARG AWS_SECRET_KEY="none"
+ARG SOURCE_CODE="none"
+ARG TEST_FILES="none"
 
 USER root
 
-RUN apt-get update && apt-get install --assume-yes wget
+RUN apt-get update && apt-get install --assume-yes wget awscli
 
 # Pre build commands
 RUN wget https://codejudge-starter-repo-artifacts.s3.ap-south-1.amazonaws.com/backend-project/springboot/gradle/2.x/pre-build-2.sh
@@ -45,4 +49,3 @@ RUN sh alfio-build.sh
 RUN wget https://codejudge-starter-repo-artifacts.s3.ap-south-1.amazonaws.com/backend-project/springboot/maven/2.x/alfio-run.sh
 RUN chmod 0775 alfio-run.sh
 CMD sh alfio-run.sh
-
