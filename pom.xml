@@ -27,7 +27,7 @@
         <pitest.skip>false</pitest.skip>
         <springVersion>5.1.7.RELEASE</springVersion>
         <jacksonVersion>2.9.9</jacksonVersion>
-        <springSecurityConfigVersion>5.1.5.RELEASE</springSecurityConfigVersion>
+        <springSecurityConfigVersion>5.2.10.RELEASE</springSecurityConfigVersion>
         <log4jVersion>2.11.2</log4jVersion>
     </properties>
 
